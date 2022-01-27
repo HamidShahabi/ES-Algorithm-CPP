@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/sina/Desktop/uni/4001/codesign-hw-sw/final_project/src/build",
+  "command": "/usr/bin/x86_64-linux-gnu-g++-9 -I/usr/local/systemc-2.3.3/include -g -o CMakeFiles/final_project.dir/main_systemc.cc.o -c /home/sina/Desktop/uni/4001/codesign-hw-sw/final_project/src/main_systemc.cc",
+  "file": "/home/sina/Desktop/uni/4001/codesign-hw-sw/final_project/src/main_systemc.cc"
+}
+]
