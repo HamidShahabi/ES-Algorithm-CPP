@@ -1,6 +1,6 @@
 #include <systemc.h>
 
-#include "ga_module.hh"
+#include "genetic_algorithm_module.hh"
 
 int sc_main(int argc, char *argv[])
 {

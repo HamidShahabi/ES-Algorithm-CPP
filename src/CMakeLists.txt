@@ -12,7 +12,7 @@ link_directories(${SYSTEMC_PATH}/lib-linux64)
 add_executable(
     final_project
     main_systemc.cc
-    ga_module.hh
+    genetic_algorithm_module.hh
     population_updator_module.hh
 )
 
