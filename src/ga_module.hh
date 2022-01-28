@@ -11,7 +11,7 @@ SC_MODULE(GeneticAlgorithm)
 {
   sc_in<int> size_of_population;
   sc_in<int> number_of_items;
-  sc_in<double> p_cross_over, p_mutation;
+  sc_in<double> probability_cross_over, probability_mutation;
   sc_in<int> weight_limit;
   std::vector<Item> items;
   FinishCondition finish_condition;
@@ -26,7 +26,7 @@ SC_MODULE(GeneticAlgorithm)
     return 1 + std::rand() / ((RAND_MAX + 1u) / range);
   }
 
-  void calculate_fitness(Population & population)
+  void calculate_fitnesses(Population & population)
   {
     for (auto &chromosome : population.chromosomes)
     {
@@ -47,50 +47,33 @@ SC_MODULE(GeneticAlgorithm)
     }
   }
 
-  Chromosome get_best_fit(const Population &population)
+  Chromosome get_best_fit_chromosome(const Population &population)
   {
-    Chromosome best_fit = population.chromosomes.front();
+    Chromosome best_fit_chromosome = population.chromosomes.front();
 
     for (const auto &chromosome : population.chromosomes)
-      if (chromosome.fitness > best_fit.fitness)
-        best_fit = chromosome;
+      if (chromosome.fitness > best_fit_chromosome.fitness)
+        best_fit_chromosome = chromosome;
 
-    return best_fit;
+    return best_fit_chromosome;
   }
 
-  bool are_requirements_met(const Population &population)
-  {
-    switch (finish_condition.finish_condition_type)
-    {
-    case FinishConditionType::CONVERGENCY_OF_FITNESS:
-      return algorithm_state.convergence_counter >=
-             finish_condition.convergence_accuracy;
-    case FinishConditionType::NUMBER_OF_UPDATES:
-      return algorithm_state.number_of_updates >=
-             finish_condition.number_of_updates;
-    case FinishConditionType::REQUIRED_FITNESS:
-      return (get_best_fit(population).fitness >=
-              finish_condition.required_fitness);
-    }
-    return false;
-  }
-
-  Chromosome start_algorithm()
+  Chromosome do_algorithm()
   {
     auto population = SoftwarePart::generate_random_population(
         size_of_population.read(), number_of_items.read());
 
     while (true)
     {
-      calculate_fitness(population);
+      calculate_fitnesses(population);
 
       SoftwarePart::update_algorithm_state(
-          algorithm_state, get_best_fit(population).fitness, population);
+          algorithm_state, get_best_fit_chromosome(population).fitness, population);
 
       // SoftwarePart::print_population(population); // for debug purpose
 
       if (SoftwarePart::are_requirements_met(algorithm_state, finish_condition,
-                                             get_best_fit(population).fitness))
+                                             get_best_fit_chromosome(population).fitness))
         break;
 
       population_updator.population = &population;
@@ -98,10 +81,18 @@ SC_MODULE(GeneticAlgorithm)
       wait(update_done);
     }
 
-    return get_best_fit(population);
+    return get_best_fit_chromosome(population);
   }
 
-  void foo() { answer = start_algorithm(); }
+  void genetic_algorithm_thread() { answer = do_algorithm(); }
+
+  void set_up_population_updator()
+  {
+    population_updator.probability_cross_over(probability_cross_over);
+    population_updator.probability_mutation(probability_mutation);
+    population_updator.do_update = &do_update;
+    population_updator.update_done = &update_done;
+  }
 
   typedef GeneticAlgorithm SC_CURRENT_USER_MODULE;
   GeneticAlgorithm(::sc_core::sc_module_name, const std::vector<Item> &i_items,
@@ -109,13 +100,9 @@ SC_MODULE(GeneticAlgorithm)
       : items(i_items), finish_condition(i_finish_condition),
         population_updator("population_updator")
   {
-    population_updator.p_cross_over(p_cross_over);
-    population_updator.p_mutation(p_mutation);
-    population_updator.do_update = &do_update;
-    population_updator.update_done = &update_done;
+    std::srand(std::time(nullptr));
+    set_up_population_updator();
 
-    std::srand(
-        std::time(nullptr)); // use current time as seed for random generator
-    SC_THREAD(foo);
+    SC_THREAD(genetic_algorithm_thread);
   }
 };

@@ -9,7 +9,7 @@ using namespace GeneticAlgorithmTypes;
 
 SC_MODULE(PopulationUpdator)
 {
-  sc_in<double> p_cross_over, p_mutation;
+  sc_in<double> probability_cross_over, probability_mutation;
   sc_event *do_update, *update_done;
   Population *population;
 
@@ -42,11 +42,11 @@ SC_MODULE(PopulationUpdator)
 
     for (int i = population.chromosomes.size() % 2;
          i < population.chromosomes.size() - 1; i += 2)
-      if (get_random_number(100) <= p_cross_over.read() * 100)
+      if (get_random_number(100) <= probability_cross_over.read() * 100)
         cross_over(population.chromosomes[i], population.chromosomes[i + 1]);
 
     for (auto &chromosome : population.chromosomes)
-      if (get_random_number(100) <= p_mutation.read() * 100)
+      if (get_random_number(100) <= probability_mutation.read() * 100)
         mutate(chromosome);
   }
 
