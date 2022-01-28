@@ -1,113 +1,11 @@
 #pragma once
-#include "systemc.h"
+#include <systemc.h>
 
-enum class Gen
-{
-  ENABLE,
-  DISABLE,
-};
+#include "genetic_algorithm_types.hh"
+#include "population_updator_module.hh"
+#include "software_part.hh"
 
-struct Chromosome
-{
-  std::vector<Gen> gens;
-  double fitness;
-
-  Chromosome() : gens(), fitness(0) {}
-
-  bool operator==(const Chromosome &other) const
-  {
-    return gens == other.gens && fitness == other.fitness;
-  }
-
-  friend ostream &operator<<(ostream &os, const Chromosome &c)
-  {
-    std::cout << "[";
-    for (const auto &gen : c.gens)
-      std::cout << (gen == Gen::ENABLE ? "1, " : "0, ");
-    std::cout << "] : " << c.fitness << std::endl;
-
-    return os;
-  }
-};
-
-struct Population
-{
-  std::vector<Chromosome> chromosomes;
-
-  bool operator==(const Population &other) const
-  {
-    return chromosomes == other.chromosomes;
-  };
-
-  friend ostream &operator<<(ostream &os, const Population &p)
-  {
-    for (const auto &chromosome : p.chromosomes)
-      os << chromosome;
-    std::cout << std::endl;
-
-    return os;
-  }
-};
-
-struct Item
-{
-  int value, weight;
-
-  Item(int i_v, int i_w) : value(i_v), weight(i_w) {}
-
-  bool operator==(const Item &other) const
-  {
-    return value == other.value && weight == other.weight;
-  };
-
-  friend ostream &operator<<(ostream &os, const Item &i)
-  {
-    os << i.value << ", " << i.weight << std::endl;
-
-    return os;
-  }
-};
-
-enum class FinishConditionType
-{
-  NUMBER_OF_UPDATES,
-  REQUIRED_FITNESS,
-  CONVERGENCY_OF_FITNESS,
-};
-
-struct FinishCondition
-{
-  FinishConditionType finish_condition_type;
-  int number_of_updates;
-  double required_fitness;
-  int convergence_accuracy;
-
-  bool operator==(const FinishCondition &other) const
-  {
-    return finish_condition_type == other.finish_condition_type &&
-           number_of_updates == other.number_of_updates &&
-           required_fitness == other.required_fitness &&
-           convergence_accuracy == other.convergence_accuracy;
-  };
-
-  friend ostream &operator<<(ostream &os, const FinishCondition &f)
-  {
-    os << std::endl;
-    return os;
-  }
-};
-
-struct AlgorithmState
-{
-  int number_of_updates;
-  double previous_fitness;
-  int convergence_counter;
-
-  AlgorithmState()
-      : number_of_updates(0), previous_fitness(0), convergence_counter(1)
-  {
-  }
-};
+using namespace GeneticAlgorithmTypes;
 
 SC_MODULE(GeneticAlgorithm)
 {
@@ -118,36 +16,14 @@ SC_MODULE(GeneticAlgorithm)
   std::vector<Item> items;
   FinishCondition finish_condition;
   Chromosome answer;
-
   AlgorithmState algorithm_state;
+  PopulationUpdator population_updator;
+
+  sc_event do_update, update_done;
 
   int get_random_number(int range)
   {
     return 1 + std::rand() / ((RAND_MAX + 1u) / range);
-  }
-
-  Chromosome generate_random_chromosome()
-  {
-    Chromosome chromosome;
-
-    for (int i = 0; i < number_of_items.read(); i++)
-    {
-      auto random_number = get_random_number(10);
-      chromosome.gens.push_back((random_number > 5) ? Gen::ENABLE
-                                                    : Gen::DISABLE);
-    }
-
-    return chromosome;
-  }
-
-  Population generate_random_population()
-  {
-    Population population;
-
-    for (int i = 0; i < size_of_population.read(); i++)
-      population.chromosomes.push_back(generate_random_chromosome());
-
-    return population;
   }
 
   void calculate_fitness(Population & population)
@@ -169,43 +45,6 @@ SC_MODULE(GeneticAlgorithm)
 
       chromosome.fitness = fitness;
     }
-  }
-
-  void print_population(const Population &population)
-  {
-    std::cout << population << std::endl;
-  }
-
-  void mutate(Chromosome & chromosome)
-  {
-    for (auto &gen : chromosome.gens)
-      if (get_random_number(100) <= 15)
-        gen = (gen == Gen::DISABLE ? Gen::ENABLE : Gen::DISABLE);
-  }
-
-  void cross_over(Chromosome & c1, Chromosome & c2)
-  {
-    int cross_point = get_random_number(c1.gens.size() - 1);
-
-    for (int i = 0; i < cross_point; i++)
-      std::swap(c1.gens[i], c2.gens[i]);
-  }
-
-  void update_population(Population & population)
-  {
-    std::sort(population.chromosomes.begin(), population.chromosomes.end(),
-              [](const Chromosome &c1, const Chromosome &c2) {
-                return c1.fitness > c2.fitness;
-              });
-
-    for (int i = population.chromosomes.size() % 2;
-         i < population.chromosomes.size() - 1; i += 2)
-      if (get_random_number(100) <= p_cross_over.read() * 100)
-        cross_over(population.chromosomes[i], population.chromosomes[i + 1]);
-
-    for (auto &chromosome : population.chromosomes)
-      if (get_random_number(100) <= p_mutation.read() * 100)
-        mutate(chromosome);
   }
 
   Chromosome get_best_fit(const Population &population)
@@ -236,64 +75,47 @@ SC_MODULE(GeneticAlgorithm)
     return false;
   }
 
-  void update_algorithm_state(const Population &population)
-  {
-    if (get_best_fit(population).fitness == algorithm_state.previous_fitness)
-    {
-      algorithm_state.convergence_counter++;
-    }
-    else
-    {
-      algorithm_state.convergence_counter = 1;
-      algorithm_state.previous_fitness = get_best_fit(population).fitness;
-    }
-
-    algorithm_state.number_of_updates += 1;
-  }
-
   Chromosome start_algorithm()
   {
-    auto population = generate_random_population();
-
+    auto population = SoftwarePart::generate_random_population(
+        size_of_population.read(), number_of_items.read());
 
     while (true)
     {
       calculate_fitness(population);
 
-      update_algorithm_state(population);
+      SoftwarePart::update_algorithm_state(
+          algorithm_state, get_best_fit(population).fitness, population);
 
-      // print_population(population);
+      // SoftwarePart::print_population(population); // for debug purpose
 
-      if (are_requirements_met(population))
+      if (SoftwarePart::are_requirements_met(algorithm_state, finish_condition,
+                                             get_best_fit(population).fitness))
         break;
 
-      update_population(population);
+      population_updator.population = &population;
+      do_update.notify();
+      wait(update_done);
     }
 
     return get_best_fit(population);
   }
 
-  void foo()
+  void foo() { answer = start_algorithm(); }
+
+  typedef GeneticAlgorithm SC_CURRENT_USER_MODULE;
+  GeneticAlgorithm(::sc_core::sc_module_name, const std::vector<Item> &i_items,
+                   const FinishCondition &i_finish_condition)
+      : items(i_items), finish_condition(i_finish_condition),
+        population_updator("population_updator")
   {
-    answer = start_algorithm();
+    population_updator.p_cross_over(p_cross_over);
+    population_updator.p_mutation(p_mutation);
+    population_updator.do_update = &do_update;
+    population_updator.update_done = &update_done;
+
+    std::srand(
+        std::time(nullptr)); // use current time as seed for random generator
+    SC_THREAD(foo);
   }
-
-  SC_CTOR(GeneticAlgorithm) { SC_THREAD(foo); }
 };
-
-/*
-
-corpse:
-conceal:  cover
-dismal:   gloomy,hopeless
-frigid:   cool,chill
-inhabit:  stay,settle in
-numb:     !=sensetive
-peril:    hazard, insecurity
-recline:  laze,repose
-shriek:   shout
-sinister: evil
-tempt:    provoke
-wager:    gamble
-
-*/

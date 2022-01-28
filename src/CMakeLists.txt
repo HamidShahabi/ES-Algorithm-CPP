@@ -13,6 +13,7 @@ add_executable(
     final_project
     main_systemc.cc
     ga_module.hh
+    population_updator_module.hh
 )
 
 target_link_libraries(final_project PUBLIC systemc)
