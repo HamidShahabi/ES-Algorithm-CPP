@@ -68,12 +68,14 @@ SC_MODULE(GeneticAlgorithm)
       calculate_fitnesses(population);
 
       SoftwarePart::update_algorithm_state(
-          algorithm_state, get_best_fit_chromosome(population).fitness, population);
+          algorithm_state, get_best_fit_chromosome(population).fitness,
+          population);
 
-      // SoftwarePart::print_population(population); // for debug purpose
+      SoftwarePart::print_population(population); // for debug purpose
 
-      if (SoftwarePart::are_requirements_met(algorithm_state, finish_condition,
-                                             get_best_fit_chromosome(population).fitness))
+      if (SoftwarePart::are_requirements_met(
+              algorithm_state, finish_condition,
+              get_best_fit_chromosome(population).fitness))
         break;
 
       population_updator.population = &population;

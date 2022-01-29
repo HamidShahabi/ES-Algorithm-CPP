@@ -14,15 +14,18 @@ int sc_main(int argc, char *argv[])
   size_of_population.write(4);       // size of population
 
   std::vector<int> values({1, 2, 1, 3, 1});
-  std::vector<int> weights({2, 1, 4, 5, 5}); // 0.5 + 2 + 0.6 = 3.1
+  std::vector<int> weights({2, 1, 4, 5, 5});
+  // maximum fitness : 0.5 + 2 + 0.6 = 3.1
+
   std::vector<Item> items;
   for (int i = 0; i < values.size(); i++)
     items.emplace_back(values[i], weights[i]);
   number_of_items.write(items.size());
 
   // finish condition
-  finish_condition.finish_condition_type = FinishConditionType::REQUIRED_FITNESS;
-  finish_condition.required_fitness = 1.2;
+  finish_condition.finish_condition_type =
+      FinishConditionType::CONVERGENCY_OF_FITNESS;
+  finish_condition.convergence_accuracy = 3;
 
   // knap-sack extra condition
   weight_limit.write(8);
@@ -37,7 +40,7 @@ int sc_main(int argc, char *argv[])
   auto &answer = genetic_algorithm.answer;
 
   sc_start();
-  std::cout << answer << std::endl;
+  std::cout << "answer : " << answer << std::endl;
 
   return 0;
 }
