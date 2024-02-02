@@ -107,4 +107,35 @@ SC_MODULE(GeneticAlgorithm)
 
     SC_THREAD(genetic_algorithm_thread);
   }
+float calculateMean(const std::vector<float>& values) {
+    float sum = 0.0;
+    for (const auto& value : values) {
+        sum += value;
+    }
+    return sum / values.size();
+}
+
+float standardDeviation(const std::vector<float>& values) {
+    float mean = calculateMean(values);
+    float sumOfSquares = 0.0;
+    for (const auto& value : values) {
+        sumOfSquares += std::pow(value - mean, 2);
+    }
+    float variance = sumOfSquares / values.size();
+    return std::sqrt(variance);
+}
+void initialStdDeviation(const std::vector<Chromosome>& population, std::vector<float>& stdDeviation) {
+    if (population.empty()) return;
+
+    int CHROMOSOME_LENGTH = population.front().gens.size();
+    stdDeviation.resize(CHROMOSOME_LENGTH, 0.0f); // Ensure the stdDeviation vector is properly sized
+
+    for (int i = 0; i < CHROMOSOME_LENGTH; ++i) {
+        std::vector<float> geneExistenceProbabilities;
+        for (const auto& chromosome : population) {
+            geneExistenceProbabilities.push_back(chromosome.gens[i].existence_prob);
+        }
+        stdDeviation[i] = standardDeviation(geneExistenceProbabilities);
+    }
+}
 };

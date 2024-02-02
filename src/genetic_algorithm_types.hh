@@ -9,10 +9,9 @@
 
 namespace GeneticAlgorithmTypes
 {
-enum class Gen
+struct Gen
 {
-  ENABLE,
-  DISABLE,
+  float existence_prob;
 };
 
 struct Chromosome
